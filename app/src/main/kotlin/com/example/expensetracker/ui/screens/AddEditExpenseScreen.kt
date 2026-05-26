@@ -47,7 +47,7 @@ fun AddEditExpenseScreen(
 
     // Dropdown States
     var expandedCategory by remember { mutableStateOf(false) }
-    val categories = listOf("General", "Materials", "Labor", "Transport", "Software", "Other")
+    val categories = listOf("General", "Medicine", "Travel", "Food", "Groceries", "Entertainment", "Other")
     
     var expandedUnit by remember { mutableStateOf(false) }
     val units = listOf("No Unit", "Hrs", "Items", "Kg", "Liters", "Days")

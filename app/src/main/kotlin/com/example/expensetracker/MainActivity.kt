@@ -23,6 +23,7 @@ class MainActivity : ComponentActivity() {
     setContent {
       val systemDark = isSystemInDarkTheme()
       var isDarkTheme by remember { mutableStateOf(systemDark) }
+
       ExpenseTrackerTheme(darkTheme = isDarkTheme) { 
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { 
             MainNavigation(

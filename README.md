@@ -1,6 +1,6 @@
-# Personal Tracker
+# Growvix
 
-Personal Tracker is a comprehensive Android application designed to help you manage your daily life efficiently. Built with Kotlin and Jetpack Compose, this app provides an intuitive and aesthetically pleasing interface for tracking your expenses, managing projects, and maintaining habits.
+Growvix is a comprehensive Android application designed to help you manage your daily life efficiently. Built with Kotlin and Jetpack Compose, this app provides an intuitive and aesthetically pleasing interface for tracking your expenses, managing projects, and maintaining habits.
 
 ## Features
 

@@ -1,6 +1,6 @@
 package com.example.expensetracker.ui.screens
 
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -82,18 +82,24 @@ fun MainScreen(
                 .padding(paddingValues)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            when (selectedTab) {
-                0 -> MonthlyExpensesScreen(viewModel = expenseViewModel, onNavigate = onNavigate)
-                1 -> DashboardScreen(
-                    viewModel = expenseViewModel,
-                    isDarkTheme = isDarkTheme,
-                    onThemeToggle = onThemeToggle,
-                    onNavigate = onNavigate
-                )
-                2 -> HabitTrackerScreen(
-                    viewModel = habitViewModel,
-                    onNavigate = onNavigate
-                )
+            Crossfade(
+                targetState = selectedTab,
+                animationSpec = tween(durationMillis = 300),
+                label = "tab_crossfade"
+            ) { targetTab ->
+                when (targetTab) {
+                    0 -> MonthlyExpensesScreen(viewModel = expenseViewModel, onNavigate = onNavigate)
+                    1 -> DashboardScreen(
+                        viewModel = expenseViewModel,
+                        isDarkTheme = isDarkTheme,
+                        onThemeToggle = onThemeToggle,
+                        onNavigate = onNavigate
+                    )
+                    2 -> HabitTrackerScreen(
+                        viewModel = habitViewModel,
+                        onNavigate = onNavigate
+                    )
+                }
             }
         }
     }

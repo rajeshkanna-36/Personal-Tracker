@@ -180,7 +180,7 @@ fun HeaderSection() {
     ) {
         Column {
             Text(
-                text = "$greeting, Budi", // Placeholder name based on design, could be dynamic
+                text = greeting,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -192,15 +192,6 @@ fun HeaderSection() {
             )
         }
         
-        // Avatar placeholder
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("🐯", fontSize = 24.sp)
-        }
     }
 }
 

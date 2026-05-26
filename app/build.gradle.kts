@@ -94,4 +94,7 @@ dependencies {
   implementation(libs.androidx.room.runtime)
   implementation(libs.androidx.room.ktx)
   ksp(libs.androidx.room.compiler)
+
+  // Widget
+  implementation(libs.androidx.glance.appwidget)
 }

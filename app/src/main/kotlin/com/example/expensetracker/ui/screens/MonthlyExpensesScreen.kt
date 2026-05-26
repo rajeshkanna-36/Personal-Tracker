@@ -43,6 +43,7 @@ fun MonthlyExpensesScreen(
     val generalExpenses by viewModel.generalExpenses.collectAsState()
     val totalExpenses by viewModel.totalGeneralExpenses.collectAsState()
     val totalIncome by viewModel.totalGeneralIncome.collectAsState()
+    val walletBalance = totalIncome - totalExpenses
 
     // Month selector state
     val calendar = remember { Calendar.getInstance() }
@@ -65,6 +66,10 @@ fun MonthlyExpensesScreen(
 
     // Delete confirmation
     var expenseToDelete by remember { mutableStateOf<ExpenseEntity?>(null) }
+    
+    // Add Cash Dialog
+    var showAddCashDialog by remember { mutableStateOf(false) }
+    var cashToAdd by remember { mutableStateOf("") }
 
     // Filter expenses by selected month
     val selectedMonth = months[selectedMonthIndex]
@@ -144,6 +149,61 @@ fun MonthlyExpensesScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(top = 4.dp, bottom = 24.dp)
         ) {
+            // Wallet Card
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(48.dp),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("💳", fontSize = 24.sp)
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "My Wallet (Cash on Hand)",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                            )
+                            Text(
+                                formatter.format(walletBalance),
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        
+                        IconButton(
+                            onClick = { showAddCashDialog = true },
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.primary, CircleShape)
+                                .size(36.dp)
+                        ) {
+                            Icon(
+                                Icons.Rounded.Add,
+                                contentDescription = "Add Cash",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
             // Month Selector Chips
             item {
                 val monthFormat = SimpleDateFormat("MMM yyyy", Locale.getDefault())
@@ -374,6 +434,59 @@ fun MonthlyExpensesScreen(
             }
         )
     }
+
+    // Add Cash dialog
+    if (showAddCashDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                showAddCashDialog = false 
+                cashToAdd = ""
+            },
+            title = { Text("Add Cash to Wallet") },
+            text = {
+                OutlinedTextField(
+                    value = cashToAdd,
+                    onValueChange = { cashToAdd = it },
+                    label = { Text("Amount (₹)") },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val amount = cashToAdd.toDoubleOrNull()
+                        if (amount != null && amount > 0) {
+                            viewModel.saveExpense(
+                                ExpenseEntity(
+                                    amount = amount,
+                                    description = "Added to Wallet",
+                                    type = "Income",
+                                    category = "General"
+                                )
+                            )
+                        }
+                        showAddCashDialog = false
+                        cashToAdd = ""
+                    }
+                ) {
+                    Text("Add Cash")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showAddCashDialog = false 
+                        cashToAdd = ""
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -424,11 +537,12 @@ fun MonthlyExpenseRow(
     val accentColor = if (isIncome) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
     val sign = if (isIncome) "+" else "-"
     val emoji = when (expense.category) {
-        "Materials" -> "🧱"
-        "Labor" -> "👷"
-        "Transport" -> "🚚"
-        "Software" -> "💻"
-        "General" -> if (isIncome) "💵" else "🛒"
+        "Medicine" -> "💊"
+        "Travel" -> "✈️"
+        "Food" -> "🍔"
+        "Groceries" -> "🛒"
+        "Entertainment" -> "🍿"
+        "General" -> if (isIncome) "💵" else "🛍️"
         else -> "📦"
     }
 
