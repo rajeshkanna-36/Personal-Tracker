@@ -74,9 +74,12 @@ class BackupManager(
                         database.expenseDao().insertProcess(process)
                     }
                     "Expense" -> {
+                        val parsedProcessId = parts[2].toLongOrNull()
+                        val processId = if (parsedProcessId == 0L) null else parsedProcessId
+
                         val expense = ExpenseEntity(
                             id = parts[1].toLongOrNull() ?: 0L,
-                            processId = parts[2].toLongOrNull() ?: 0L,
+                            processId = processId,
                             amount = parts[3].toDoubleOrNull() ?: 0.0,
                             description = parts[4],
                             date = parts[5].toLongOrNull() ?: System.currentTimeMillis(),
