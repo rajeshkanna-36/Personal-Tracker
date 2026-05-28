@@ -4,7 +4,7 @@ Growvix is a comprehensive Android application designed to help you manage your 
 
 ## Features
 
-- **Monthly Expenses Tracker:** Keep a close eye on your financial health by tracking your monthly expenses.
+- **Monthly Expenses Tracker:** Keep a  close eye on your financial health by tracking your monthly expenses.
 - **Project Dashboard:** Organize and manage your projects effectively.
 - **Habit Tracker:** Build and maintain good habits with a dedicated tracker.
 - **Dark & Light Themes:** A beautiful user interface that respects your system preferences with built-in dark and light themes toggle.
