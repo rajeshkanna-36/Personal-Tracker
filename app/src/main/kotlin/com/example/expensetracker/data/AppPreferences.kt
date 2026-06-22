@@ -17,4 +17,15 @@ class AppPreferences(context: Context) {
         set(value) {
             prefs.edit().putBoolean("is_auto_backup_enabled", value).apply()
         }
+
+    /** Tri-state: null = follow system, true = dark, false = light */
+    var isDarkTheme: Boolean?
+        get() = if (prefs.contains("is_dark_theme")) prefs.getBoolean("is_dark_theme", true) else null
+        set(value) {
+            if (value == null) {
+                prefs.edit().remove("is_dark_theme").apply()
+            } else {
+                prefs.edit().putBoolean("is_dark_theme", value).apply()
+            }
+        }
 }

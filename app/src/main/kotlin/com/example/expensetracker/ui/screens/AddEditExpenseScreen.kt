@@ -52,22 +52,23 @@ fun AddEditExpenseScreen(
     var expandedUnit by remember { mutableStateOf(false) }
     val units = listOf("No Unit", "Hrs", "Items", "Kg", "Liters", "Days")
 
-    val allExpenses by viewModel.allExpenses.collectAsState()
+    val existingExpense by if (expenseId != null) {
+        viewModel.getExpenseById(expenseId).collectAsState(initial = null)
+    } else {
+        remember { mutableStateOf(null) }
+    }
 
-    LaunchedEffect(expenseId, allExpenses) {
-        if (expenseId != null) {
-            val existing = allExpenses.find { it.id == expenseId }
-            if (existing != null) {
-                description = existing.description
-                amount = existing.amount.toString()
-                type = existing.type
-                category = existing.category
-                receiptUri = existing.receiptUri
-                quantity = existing.quantity?.toString() ?: ""
-                unit = existing.unit ?: "No Unit"
-                selectedDateMillis = existing.date
-                datePickerState.selectedDateMillis = existing.date
-            }
+    LaunchedEffect(existingExpense) {
+        existingExpense?.let { existing ->
+            description = existing.description
+            amount = existing.amount.toString()
+            type = existing.type
+            category = existing.category
+            receiptUri = existing.receiptUri
+            quantity = existing.quantity?.toString() ?: ""
+            unit = existing.unit ?: "No Unit"
+            selectedDateMillis = existing.date
+            datePickerState.selectedDateMillis = existing.date
         }
     }
 

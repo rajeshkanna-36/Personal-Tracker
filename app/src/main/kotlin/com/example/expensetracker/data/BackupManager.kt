@@ -21,10 +21,49 @@ class BackupManager(
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
 
+    // CSV helper: quote a field so commas, quotes, and newlines are safe
+    private fun csvQuote(value: String): String {
+        return if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            "\"${value.replace("\"", "\"\"")}\""
+        } else {
+            value
+        }
+    }
+
+    // CSV helper: parse a single CSV line respecting quoted fields
+    private fun parseCsvLine(line: String): List<String> {
+        val result = mutableListOf<String>()
+        var current = StringBuilder()
+        var inQuotes = false
+        var i = 0
+        while (i < line.length) {
+            val c = line[i]
+            when {
+                c == '"' && !inQuotes -> inQuotes = true
+                c == '"' && inQuotes -> {
+                    if (i + 1 < line.length && line[i + 1] == '"') {
+                        current.append('"')
+                        i++ // skip escaped quote
+                    } else {
+                        inQuotes = false
+                    }
+                }
+                c == ',' && !inQuotes -> {
+                    result.add(current.toString())
+                    current = StringBuilder()
+                }
+                else -> current.append(c)
+            }
+            i++
+        }
+        result.add(current.toString())
+        return result
+    }
+
     suspend fun exportAllDataToString(): String {
         val processes = database.expenseDao().getAllProcesses().first()
         val expenses = database.expenseDao().getAllExpenses().first()
-        val habits = database.habitDao().getAllHabits().first()
+        val habits = database.habitDao().getAllHabitsIncludingArchived().first()
         val habitCompletions = database.habitDao().getAllCompletions().first()
 
         val csv = StringBuilder()
@@ -32,24 +71,24 @@ class BackupManager(
         csv.append("Type,ID,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10\n")
         
         processes.forEach { p ->
-            // Process: Type, id, name, budget, description, createdAt, N/A...
-            csv.append("Process,${p.id},${p.name},${p.budget},${p.description},${p.createdAt},N/A,N/A,N/A,N/A,N/A,N/A\n")
+            // Process: Type, id, name, budget, description, createdAt, isCompleted, colorHex, N/A...
+            csv.append("Process,${p.id},${csvQuote(p.name)},${p.budget},${csvQuote(p.description)},${p.createdAt},${p.isCompleted},${csvQuote(p.colorHex)},N/A,N/A,N/A,N/A\n")
         }
         
         expenses.forEach { e ->
             // Expense: Type, id, processId, amount, description, date, category, type, receiptUri, quantity, unit, N/A
-            csv.append("Expense,${e.id},${e.processId},${e.amount},${e.description},${e.date},${e.category},${e.type},${e.receiptUri ?: ""},${e.quantity ?: ""},${e.unit ?: ""},N/A\n")
+            csv.append("Expense,${e.id},${e.processId ?: ""},${e.amount},${csvQuote(e.description)},${e.date},${csvQuote(e.category)},${e.type},${csvQuote(e.receiptUri ?: "")},${e.quantity ?: ""},${e.unit ?: ""},N/A\n")
         }
 
         habits.forEach { h ->
             val safeTargetDays = h.targetDays.replace(",", "|")
             // Habit: Type, id, name, icon, colorHex, reminderTime, category, safeTargetDays, durationMinutes, createdAt, isArchived
-            csv.append("Habit,${h.id},${h.name},${h.icon},${h.colorHex},${h.reminderTime ?: ""},${h.category},${safeTargetDays},${h.durationMinutes ?: ""},${h.createdAt},${h.isArchived}\n")
+            csv.append("Habit,${h.id},${csvQuote(h.name)},${h.icon},${h.colorHex},${h.reminderTime ?: ""},${csvQuote(h.category)},${safeTargetDays},${h.durationMinutes ?: ""},${h.createdAt},${h.isArchived}\n")
         }
 
         habitCompletions.forEach { hc ->
-            // HabitCompletion: Type, id, habitId, dateMillis, N/A...
-            csv.append("HabitCompletion,${hc.id},${hc.habitId},${hc.dateMillis},N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A\n")
+            // HabitCompletion: Type, id, habitId, dateMillis, completedAt, N/A...
+            csv.append("HabitCompletion,${hc.id},${hc.habitId},${hc.dateMillis},${hc.completedAt},N/A,N/A,N/A,N/A,N/A,N/A,N/A\n")
         }
 
         return csv.toString()
@@ -60,7 +99,8 @@ class BackupManager(
         if (lines.isEmpty()) return
 
         lines.drop(1).forEach { line ->
-            val parts = line.split(",")
+            if (line.isBlank()) return@forEach
+            val parts = parseCsvLine(line)
             if (parts.size >= 11) {
                 when (parts[0]) {
                     "Process" -> {
@@ -69,17 +109,18 @@ class BackupManager(
                             name = parts[2],
                             budget = parts[3].toDoubleOrNull() ?: 0.0,
                             description = parts[4],
-                            createdAt = parts[5].toLongOrNull() ?: System.currentTimeMillis()
+                            createdAt = parts[5].toLongOrNull() ?: System.currentTimeMillis(),
+                            isCompleted = parts[6].toBooleanStrictOrNull() ?: false,
+                            colorHex = parts[7].takeIf { it.isNotBlank() && it != "N/A" } ?: "#FF6200EE"
                         )
                         database.expenseDao().insertProcess(process)
                     }
                     "Expense" -> {
                         val parsedProcessId = parts[2].toLongOrNull()
-                        val processId = if (parsedProcessId == 0L) null else parsedProcessId
 
                         val expense = ExpenseEntity(
                             id = parts[1].toLongOrNull() ?: 0L,
-                            processId = processId,
+                            processId = parsedProcessId, // null if blank/unparseable — correct for general expenses
                             amount = parts[3].toDoubleOrNull() ?: 0.0,
                             description = parts[4],
                             date = parts[5].toLongOrNull() ?: System.currentTimeMillis(),
@@ -110,7 +151,8 @@ class BackupManager(
                         val completion = HabitCompletionEntity(
                             id = parts[1].toLongOrNull() ?: 0L,
                             habitId = parts[2].toLongOrNull() ?: 0L,
-                            dateMillis = parts[3].toLongOrNull() ?: System.currentTimeMillis()
+                            dateMillis = parts[3].toLongOrNull() ?: System.currentTimeMillis(),
+                            completedAt = parts[4].toLongOrNull() ?: System.currentTimeMillis()
                         )
                         database.habitDao().insertCompletion(completion)
                     }

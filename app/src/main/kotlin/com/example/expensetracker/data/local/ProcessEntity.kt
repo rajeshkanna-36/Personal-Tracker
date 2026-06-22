@@ -2,7 +2,6 @@ package com.example.expensetracker.data.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import java.util.Date
 
 @Entity(tableName = "processes")
 data class ProcessEntity(

@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -42,9 +43,9 @@ fun ExpenseGraph(
     // Group expenses by day (last 7 days)
     val calendar = Calendar.getInstance()
     calendar.set(Calendar.HOUR_OF_DAY, 0)
-    calendar.clear(Calendar.MINUTE)
-    calendar.clear(Calendar.SECOND)
-    calendar.clear(Calendar.MILLISECOND)
+    calendar.set(Calendar.MINUTE, 0)
+    calendar.set(Calendar.SECOND, 0)
+    calendar.set(Calendar.MILLISECOND, 0)
 
     val last7Days = (6 downTo 0).map { i ->
         val cal = calendar.clone() as Calendar
@@ -59,9 +60,9 @@ fun ExpenseGraph(
     val grouped = expenses.filter { it.type == "Expense" }.groupBy { expense ->
         val exCal = Calendar.getInstance().apply { timeInMillis = expense.date }
         exCal.set(Calendar.HOUR_OF_DAY, 0)
-        exCal.clear(Calendar.MINUTE)
-        exCal.clear(Calendar.SECOND)
-        exCal.clear(Calendar.MILLISECOND)
+        exCal.set(Calendar.MINUTE, 0)
+        exCal.set(Calendar.SECOND, 0)
+        exCal.set(Calendar.MILLISECOND, 0)
         exCal.timeInMillis
     }
 
@@ -120,7 +121,7 @@ fun ExpenseGraph(
                         startX + barWidth / 2,
                         startY - 8.dp.toPx(),
                         android.graphics.Paint().apply {
-                            color = textColor.hashCode()
+                            color = textColor.toArgb()
                             textSize = 10.sp.toPx()
                             textAlign = android.graphics.Paint.Align.CENTER
                             isAntiAlias = true

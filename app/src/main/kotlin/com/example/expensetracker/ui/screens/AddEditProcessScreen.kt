@@ -31,19 +31,25 @@ fun AddEditProcessScreen(
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var budget by remember { mutableStateOf("") }
+    var portfolioType by remember { mutableStateOf("General") }
 
     LaunchedEffect(process) {
         process?.let {
             name = it.name
             description = it.description
             budget = it.budget.toString()
+            portfolioType = when (it.colorHex.uppercase()) {
+                "#FF4CAF50" -> "Agriculture"
+                "#FF2196F3" -> "Investment"
+                else -> "General"
+            }
         }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (processId == null) "New Project" else "Edit Project") },
+                title = { Text(if (processId == null) "New Portfolio" else "Edit Portfolio") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
@@ -59,33 +65,17 @@ fun AddEditProcessScreen(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            val commonCrops = listOf("Corn", "Paddy", "Sugarcane", "Coconut", "Other")
-
-            Text("Crop Type", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            
-            LazyRow(
+            // Portfolio Type Selector
+            Text("Portfolio Type", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(commonCrops) { crop ->
-                    val isSelected = if (crop == "Other") {
-                        name.isNotBlank() && name !in listOf("Corn", "Paddy", "Sugarcane", "Coconut")
-                    } else {
-                        name == crop
-                    }
-
+                listOf("Agriculture" to "🌾", "Investment" to "📈", "General" to "📁").forEach { (type, emoji) ->
                     FilterChip(
-                        selected = isSelected,
-                        onClick = {
-                            if (crop != "Other") {
-                                name = crop
-                            } else {
-                                if (name in listOf("Corn", "Paddy", "Sugarcane", "Coconut")) {
-                                    name = ""
-                                }
-                            }
-                        },
-                        label = { Text(crop) },
+                        selected = portfolioType == type,
+                        onClick = { portfolioType = type },
+                        label = { Text("$emoji $type") },
                         shape = RoundedCornerShape(16.dp),
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
@@ -95,10 +85,68 @@ fun AddEditProcessScreen(
                 }
             }
 
+            val commonTags = when (portfolioType) {
+                "Agriculture" -> listOf("Corn", "Paddy", "Sugarcane", "Coconut", "Other")
+                "Investment" -> listOf("Stocks", "Mutual Funds", "Crypto", "Real Estate", "Other")
+                else -> emptyList()
+            }
+
+            if (commonTags.isNotEmpty()) {
+                Text(
+                    if (portfolioType == "Agriculture") "Crop Type" else "Asset Class", 
+                    style = MaterialTheme.typography.labelLarge, 
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(commonTags) { tag ->
+                        val isSelected = if (tag == "Other") {
+                            name.isNotBlank() && name !in commonTags.filter { it != "Other" }
+                        } else {
+                            name == tag
+                        }
+
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = {
+                                if (tag != "Other") {
+                                    name = tag
+                                } else {
+                                    if (name in commonTags) {
+                                        name = ""
+                                    }
+                                }
+                            },
+                            label = { Text(tag) },
+                            shape = RoundedCornerShape(16.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        )
+                    }
+                }
+            }
+
+            val nameLabel = when (portfolioType) {
+                "Agriculture" -> "Crop / Farm Name (e.g. 2026 Corn Crop)"
+                "Investment" -> "Portfolio Name (e.g. Tech Stocks)"
+                else -> "Project Name"
+            }
+
+            val budgetLabel = when (portfolioType) {
+                "Agriculture" -> "Expected Budget (₹)"
+                "Investment" -> "Target Capital (₹)"
+                else -> "Budget (₹)"
+            }
+
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Project Name (e.g. 2026 Corn Crop)") },
+                label = { Text(nameLabel) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -115,7 +163,7 @@ fun AddEditProcessScreen(
             OutlinedTextField(
                 value = budget,
                 onValueChange = { budget = it },
-                label = { Text("Budget (₹)") },
+                label = { Text(budgetLabel) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
@@ -125,12 +173,19 @@ fun AddEditProcessScreen(
             
             Button(
                 onClick = {
+                    val colorHex = when (portfolioType) {
+                        "Agriculture" -> "#FF4CAF50"
+                        "Investment" -> "#FF2196F3"
+                        else -> "#FF6200EE"
+                    }
+
                     val processEntity = ProcessEntity(
                         id = processId ?: 0L,
                         name = name,
                         description = description,
                         budget = budget.toDoubleOrNull() ?: 0.0,
-                        createdAt = process?.createdAt ?: System.currentTimeMillis()
+                        createdAt = process?.createdAt ?: System.currentTimeMillis(),
+                        colorHex = colorHex
                     )
                     viewModel.saveProcess(processEntity)
                     onBack()
@@ -138,9 +193,21 @@ fun AddEditProcessScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(16.dp),
+                enabled = name.isNotBlank()
             ) {
-                Text(if (processId == null) "Create Project" else "Save Changes", style = MaterialTheme.typography.titleMedium)
+                Text(if (processId == null) "Create Portfolio" else "Save Changes", style = MaterialTheme.typography.titleMedium)
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (name.isBlank()) {
+                Text(
+                    "Please enter a name",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
             }
         }
     }

@@ -34,6 +34,11 @@ val categoryColors = mapOf(
     "Labor" to Color(0xFF10B981),
     "Transport" to Color(0xFF3B82F6),
     "Software" to Color(0xFF8B5CF6),
+    "Medicine" to Color(0xFFEF4444),
+    "Travel" to Color(0xFF0EA5E9),
+    "Food" to Color(0xFFF97316),
+    "Groceries" to Color(0xFF22C55E),
+    "Entertainment" to Color(0xFFA855F7),
     "Other" to Color(0xFFEC4899)
 )
 
@@ -43,6 +48,11 @@ val categoryEmojis = mapOf(
     "Labor" to "👷",
     "Transport" to "🚚",
     "Software" to "💻",
+    "Medicine" to "💊",
+    "Travel" to "✈️",
+    "Food" to "🍔",
+    "Groceries" to "🛒",
+    "Entertainment" to "🍿",
     "Other" to "📦"
 )
 

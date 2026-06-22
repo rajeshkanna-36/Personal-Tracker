@@ -10,6 +10,8 @@ import androidx.compose.ui.graphics.Color
 private val DarkColorScheme = darkColorScheme(
     primary = PrimaryLime, 
     onPrimary = Color.Black,
+    primaryContainer = PrimaryContainerDark,
+    onPrimaryContainer = OnPrimaryContainerDark,
     secondary = AccentMint,
     onSecondary = Color.Black,
     tertiary = PrimaryIndigo,
@@ -21,12 +23,18 @@ private val DarkColorScheme = darkColorScheme(
     surfaceVariant = SurfaceCardDark,
     onSurfaceVariant = TextSecondaryDark,
     outline = BorderDark,
-    outlineVariant = BorderDark
+    outlineVariant = BorderDark,
+    error = ErrorColor,
+    onError = OnErrorColor,
+    errorContainer = ErrorContainerDark,
+    onErrorContainer = OnErrorContainerDark
 )
 
 private val LightColorScheme = lightColorScheme(
     primary = PrimaryLime, // Keep lime as the signature brand color
     onPrimary = Color.Black,
+    primaryContainer = PrimaryContainerLight,
+    onPrimaryContainer = OnPrimaryContainerLight,
     secondary = PrimaryIndigo,
     onSecondary = Color.White,
     tertiary = AccentMint,
@@ -38,7 +46,11 @@ private val LightColorScheme = lightColorScheme(
     surfaceVariant = SurfaceVariantLight, // This will fix the invisible unselected bars
     onSurfaceVariant = TextSecondaryLight,
     outline = BorderLight,
-    outlineVariant = BorderLight
+    outlineVariant = BorderLight,
+    error = ErrorColor,
+    onError = OnErrorColor,
+    errorContainer = ErrorContainerLight,
+    onErrorContainer = OnErrorContainerLight
 )
 
 @Composable

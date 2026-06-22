@@ -70,6 +70,7 @@ fun MonthlyExpensesScreen(
     // Add Cash Dialog
     var showAddCashDialog by remember { mutableStateOf(false) }
     var cashToAdd by remember { mutableStateOf("") }
+    var cashError by remember { mutableStateOf(false) }
 
     // Filter expenses by selected month
     val selectedMonth = months[selectedMonthIndex]
@@ -175,7 +176,7 @@ fun MonthlyExpensesScreen(
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                "My Wallet (Cash on Hand)",
+                                "Overall Balance",
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                             )
@@ -394,16 +395,48 @@ fun MonthlyExpensesScreen(
                     }
                 }
             } else {
-                items(displayedExpenses, key = { it.id }) { expense ->
-                    SwipeToDeleteRow(
-                        onDelete = { expenseToDelete = expense }
-                    ) {
-                        MonthlyExpenseRow(
-                            expense = expense,
-                            onClick = {
-                                onNavigate(AddEditExpense(expenseId = expense.id, processId = null))
+                val groupedExpenses = displayedExpenses.groupBy { expense ->
+                    val cal = Calendar.getInstance().apply { timeInMillis = expense.date }
+                    cal.set(Calendar.HOUR_OF_DAY, 0)
+                    cal.set(Calendar.MINUTE, 0)
+                    cal.set(Calendar.SECOND, 0)
+                    cal.set(Calendar.MILLISECOND, 0)
+                    cal.timeInMillis
+                }.toSortedMap(compareByDescending { it })
+
+                groupedExpenses.forEach { (dateMillis, expensesForDate) ->
+                    item {
+                        val headerText = remember(dateMillis) {
+                            val cal = Calendar.getInstance().apply { timeInMillis = dateMillis }
+                            val today = Calendar.getInstance()
+                            val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+
+                            when {
+                                cal.get(Calendar.YEAR) == today.get(Calendar.YEAR) && cal.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR) -> "Today"
+                                cal.get(Calendar.YEAR) == yesterday.get(Calendar.YEAR) && cal.get(Calendar.DAY_OF_YEAR) == yesterday.get(Calendar.DAY_OF_YEAR) -> "Yesterday"
+                                else -> SimpleDateFormat("EEEE, dd MMM", Locale.getDefault()).format(Date(dateMillis))
                             }
+                        }
+
+                        Text(
+                            text = headerText,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 12.dp, bottom = 4.dp, start = 8.dp)
                         )
+                    }
+
+                    items(expensesForDate, key = { it.id }) { expense ->
+                        SwipeToDeleteRow(
+                            onDelete = { expenseToDelete = expense }
+                        ) {
+                            MonthlyExpenseRow(
+                                expense = expense,
+                                onClick = {
+                                    onNavigate(AddEditExpense(expenseId = expense.id, processId = null))
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -441,18 +474,28 @@ fun MonthlyExpensesScreen(
             onDismissRequest = { 
                 showAddCashDialog = false 
                 cashToAdd = ""
+                cashError = false
             },
             title = { Text("Add Cash to Wallet") },
             text = {
-                OutlinedTextField(
-                    value = cashToAdd,
-                    onValueChange = { cashToAdd = it },
-                    label = { Text("Amount (₹)") },
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
+                Column {
+                    OutlinedTextField(
+                        value = cashToAdd,
+                        onValueChange = {
+                            cashToAdd = it
+                            cashError = false
+                        },
+                        label = { Text("Amount (₹)") },
+                        isError = cashError,
+                        supportingText = if (cashError) {
+                            { Text("Please enter a valid positive amount") }
+                        } else null,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
             },
             confirmButton = {
                 Button(
@@ -467,9 +510,12 @@ fun MonthlyExpensesScreen(
                                     category = "General"
                                 )
                             )
+                            showAddCashDialog = false
+                            cashToAdd = ""
+                            cashError = false
+                        } else {
+                            cashError = true
                         }
-                        showAddCashDialog = false
-                        cashToAdd = ""
                     }
                 ) {
                     Text("Add Cash")
@@ -480,6 +526,7 @@ fun MonthlyExpensesScreen(
                     onClick = { 
                         showAddCashDialog = false 
                         cashToAdd = ""
+                        cashError = false
                     }
                 ) {
                     Text("Cancel")

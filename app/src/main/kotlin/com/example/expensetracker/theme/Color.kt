@@ -35,3 +35,18 @@ val RoseGradient = listOf(Color(0xFFE11D48), Color(0xFFF43F5E))
 val AmberGradient = listOf(Color(0xFFD97706), Color(0xFFF59E0B))
 val PurpleGradient = listOf(Color(0xFF9333EA), Color(0xFFC084FC))
 val SlateGradient = listOf(Color(0xFF374151), Color(0xFF4B5563))
+
+// Primary Container
+val PrimaryContainerDark = Color(0xFF3A4A1E)
+val OnPrimaryContainerDark = Color(0xFFD5F58C)
+val PrimaryContainerLight = Color(0xFFE8F5C8)
+val OnPrimaryContainerLight = Color(0xFF1A2E00)
+
+// Error Colors
+val ErrorColor = Color(0xFFEF4444)
+val OnErrorColor = Color(0xFFFFFFFF)
+val ErrorContainerDark = Color(0xFF93000A)
+val OnErrorContainerDark = Color(0xFFFFDAD6)
+val ErrorContainerLight = Color(0xFFFFDAD6)
+val OnErrorContainerLight = Color(0xFF410002)
+

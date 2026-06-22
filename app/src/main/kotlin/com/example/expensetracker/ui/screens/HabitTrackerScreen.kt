@@ -29,6 +29,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -62,7 +66,7 @@ fun HabitTrackerScreen(
         habit.targetDays.split(",").contains(dayOfWeekIndex.toString())
     }
     
-    val hasAnyReminder = allHabits.any { !it.reminderTime.isNullOrBlank() }
+    val showReminderBanner = allHabits.isEmpty()
 
     Scaffold(
         floatingActionButton = {
@@ -87,7 +91,7 @@ fun HabitTrackerScreen(
         ) {
             // Header: Greeting and Date
             item {
-                HeaderSection()
+                HeaderSection(selectedDateMillis = selectedDateMillis)
             }
 
             // Weekly Calendar Strip
@@ -101,7 +105,7 @@ fun HabitTrackerScreen(
             // Reminder Card
             item {
                 AnimatedVisibility(
-                    visible = !hasAnyReminder,
+                    visible = showReminderBanner,
                     enter = fadeIn(),
                     exit = fadeOut()
                 ) {
@@ -163,14 +167,20 @@ fun HabitTrackerScreen(
 }
 
 @Composable
-fun HeaderSection() {
-    val dateStr = SimpleDateFormat("EEEE, dd MMMM, yyyy", Locale.getDefault()).format(Date())
+fun HeaderSection(selectedDateMillis: Long) {
+    val dateStr = SimpleDateFormat("EEEE, dd MMMM, yyyy", Locale.getDefault()).format(Date(selectedDateMillis))
     
-    val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-    val greeting = when (currentHour) {
-        in 0..11 -> "Good morning"
-        in 12..16 -> "Good afternoon"
-        else -> "Good evening"
+    val selectedCal = Calendar.getInstance().apply { timeInMillis = selectedDateMillis }
+    val currentHour = selectedCal.get(Calendar.HOUR_OF_DAY)
+    val isToday = isSameDay(selectedDateMillis, System.currentTimeMillis())
+    val greeting = if (isToday) {
+        when (currentHour) {
+            in 0..11 -> "Good morning"
+            in 12..16 -> "Good afternoon"
+            else -> "Good evening"
+        }
+    } else {
+        "Your habits for"
     }
 
     Row(
@@ -224,7 +234,15 @@ fun WeeklyCalendarRow(
             
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .semantics(mergeDescendants = true) {
+                        contentDescription = "Select ${daysOfWeek[index]} $dayOfMonth"
+                    }
+                    .clickable(
+                        role = Role.Button,
+                        onClick = { onDateSelected(dateMillis) }
+                    )
             ) {
                 Text(
                     text = daysOfWeek[index],
@@ -239,8 +257,7 @@ fun WeeklyCalendarRow(
                         .background(
                             color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                             shape = CircleShape
-                        )
-                        .clickable { onDateSelected(dateMillis) },
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -370,7 +387,7 @@ fun HabitRow(
         
         Card(
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             modifier = Modifier
                 .fillMaxWidth()
@@ -381,7 +398,7 @@ fun HabitRow(
                         stiffness = Spring.StiffnessMediumLow
                     )
                 )
-                .clickable { expanded = !expanded }
+                .clickable(onClickLabel = "Expand habit details") { expanded = !expanded }
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
@@ -408,7 +425,7 @@ fun HabitRow(
                             text = habit.name,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black,
+                            color = MaterialTheme.colorScheme.onSurface,
                             textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None
                         )
                         Spacer(modifier = Modifier.height(4.dp))
@@ -416,7 +433,7 @@ fun HabitRow(
                             Text(
                                 text = "Streak $streak days",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.Gray
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             MiniStreakCalendar(habit = habit, completions = allCompletions)
@@ -424,15 +441,19 @@ fun HabitRow(
                     }
                     
                     // Divider line
-                    Box(modifier = Modifier.width(1.dp).height(40.dp).background(Color(0xFFEEEEEE)))
+                    Box(modifier = Modifier.width(1.dp).height(40.dp).background(MaterialTheme.colorScheme.outlineVariant))
                     Spacer(modifier = Modifier.width(16.dp))
                     
                     // Completion Checkbox (Fluid & Minimal)
                     Box(
                         modifier = Modifier
-                            .size(32.dp)
+                            .size(56.dp)
                             .clip(CircleShape)
-                            .clickable { onToggle() },
+                            .clickable(
+                                role = Role.Checkbox,
+                                onClickLabel = if (isCompleted) "Mark as incomplete" else "Mark as complete",
+                                onClick = { onToggle() }
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         if (isCompleted) {
@@ -443,7 +464,7 @@ fun HabitRow(
                                 modifier = Modifier.size(32.dp)
                             )
                         } else {
-                            androidx.compose.foundation.Canvas(modifier = Modifier.size(24.dp)) {
+                            androidx.compose.foundation.Canvas(modifier = Modifier.size(32.dp)) {
                                 drawCircle(
                                     color = Color(0xFFE5E7EB),
                                     style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4f)
@@ -460,7 +481,7 @@ fun HabitRow(
                             .fillMaxWidth()
                             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
                     ) {
-                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFEEEEEE)))
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
                         Spacer(modifier = Modifier.height(16.dp))
                         
                         FullStreakCalendar(completions = allCompletions, targetDays = habit.targetDays, colorHex = habit.colorHex)
@@ -475,9 +496,12 @@ fun HabitRow(
                             Text(
                                 text = "Total Completions: ${allCompletions.size}",
                                 style = MaterialTheme.typography.labelLarge,
-                                color = Color.Gray
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            TextButton(onClick = onEdit) {
+                            TextButton(
+                                onClick = onEdit,
+                                modifier = Modifier.semantics { contentDescription = "Edit ${habit.name} habit" }
+                            ) {
                                 Text("Edit Habit", color = Color(android.graphics.Color.parseColor(habit.colorHex)), fontWeight = FontWeight.Bold)
                             }
                         }
@@ -593,14 +617,14 @@ fun FullStreakCalendar(completions: List<HabitCompletionEntity>, targetDays: Str
             text = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Calendar.getInstance().time),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = Color.Black
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(12.dp))
         
         // Days of week header
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             listOf("M", "T", "W", "T", "F", "S", "S").forEach {
-                Text(it, style = MaterialTheme.typography.labelSmall, color = Color.Gray, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
             }
         }
         Spacer(modifier = Modifier.height(8.dp))
@@ -631,7 +655,7 @@ fun FullStreakCalendar(completions: List<HabitCompletionEntity>, targetDays: Str
                                 .padding(2.dp)
                                 .background(
                                     color = if (isCompleted) Color(android.graphics.Color.parseColor(colorHex)) 
-                                            else if (isToday) Color(0xFFF3F4F6) 
+                                            else if (isToday) MaterialTheme.colorScheme.surfaceVariant
                                             else Color.Transparent,
                                     shape = CircleShape
                                 ),
@@ -641,8 +665,8 @@ fun FullStreakCalendar(completions: List<HabitCompletionEntity>, targetDays: Str
                                 text = currentDay.toString(),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = if (isCompleted) Color.White 
-                                        else if (isTarget) Color.Black 
-                                        else Color.LightGray,
+                                        else if (isTarget) MaterialTheme.colorScheme.onSurface
+                                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
                                 fontWeight = if (isToday || isCompleted) FontWeight.Bold else FontWeight.Normal
                             )
                         }

@@ -85,6 +85,14 @@ class ExpenseViewModel(
         )
     }
 
+    fun getExpenseById(expenseId: Long): StateFlow<ExpenseEntity?> {
+        return repository.getExpenseById(expenseId).stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+    }
+
     fun getExpensesForProcess(processId: Long): StateFlow<List<ExpenseEntity>> {
         return repository.getExpensesForProcess(processId).stateIn(
             scope = viewModelScope,
@@ -142,58 +150,6 @@ class ExpenseViewModel(
         viewModelScope.launch {
             repository.deleteExpense(expense)
             backupManager.triggerAutoBackup()
-        }
-    }
-
-    fun exportDataCsv(): String {
-        val processes = allProcesses.value
-        val expenses = allExpenses.value
-        val csv = StringBuilder()
-        csv.append("Type,ID,ProcessId/Name,Amount/Budget,Description,Date,Category,ExpenseType,ReceiptUri,Quantity,Unit\n")
-        processes.forEach { p ->
-            csv.append("Process,${p.id},${p.name},${p.budget},${p.description},${p.createdAt},N/A,N/A,N/A,N/A,N/A\n")
-        }
-        expenses.forEach { e ->
-            csv.append("Expense,${e.id},${e.processId},${e.amount},${e.description},${e.date},${e.category},${e.type},${e.receiptUri ?: ""},${e.quantity ?: ""},${e.unit ?: ""}\n")
-        }
-        return csv.toString()
-    }
-
-    fun importDataCsv(csvData: String) {
-        viewModelScope.launch {
-            val lines = csvData.lines()
-            if (lines.isEmpty()) return@launch
-            
-            lines.drop(1).forEach { line ->
-                val parts = line.split(",")
-                if (parts.size >= 7) {
-                    val type = parts[0]
-                    if (type == "Process") {
-                        val process = ProcessEntity(
-                            id = parts[1].toLongOrNull() ?: 0L,
-                            name = parts[2],
-                            budget = parts[3].toDoubleOrNull() ?: 0.0,
-                            description = parts[4],
-                            createdAt = parts[5].toLongOrNull() ?: System.currentTimeMillis()
-                        )
-                        repository.insertProcess(process)
-                    } else if (type == "Expense" && parts.size >= 11) {
-                        val expense = ExpenseEntity(
-                            id = parts[1].toLongOrNull() ?: 0L,
-                            processId = parts[2].toLongOrNull() ?: 0L,
-                            amount = parts[3].toDoubleOrNull() ?: 0.0,
-                            description = parts[4],
-                            date = parts[5].toLongOrNull() ?: System.currentTimeMillis(),
-                            category = parts[6],
-                            type = parts[7],
-                            receiptUri = parts[8].takeIf { it.isNotEmpty() },
-                            quantity = parts[9].toDoubleOrNull(),
-                            unit = parts[10].takeIf { it.isNotEmpty() }
-                        )
-                        repository.insertExpense(expense)
-                    }
-                }
-            }
         }
     }
 

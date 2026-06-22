@@ -13,6 +13,10 @@ class ExpenseRepository(private val expenseDao: ExpenseDao) {
         return expenseDao.getProcessById(processId)
     }
 
+    fun getExpenseById(expenseId: Long): Flow<ExpenseEntity?> {
+        return expenseDao.getExpenseById(expenseId)
+    }
+
     suspend fun insertProcess(process: ProcessEntity): Long {
         return expenseDao.insertProcess(process)
     }

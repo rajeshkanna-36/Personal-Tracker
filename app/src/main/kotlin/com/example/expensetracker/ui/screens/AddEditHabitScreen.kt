@@ -169,10 +169,13 @@ fun AddEditHabitScreen(
                         val isSelected = selectedDays.contains(index)
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(48.dp)
                                 .clip(CircleShape)
                                 .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
-                                .clickable {
+                                .clickable(
+                                    role = androidx.compose.ui.semantics.Role.Checkbox,
+                                    onClickLabel = "Toggle $day"
+                                ) {
                                     selectedDays = if (isSelected) {
                                         selectedDays - index
                                     } else {
@@ -193,18 +196,34 @@ fun AddEditHabitScreen(
 
             // Reminder Time Input
             val onTimeClick = {
+                val calendar = java.util.Calendar.getInstance()
+                val initialHour = if (reminderTime.isNotBlank()) reminderTime.split(":")[0].toIntOrNull() ?: calendar.get(java.util.Calendar.HOUR_OF_DAY) else calendar.get(java.util.Calendar.HOUR_OF_DAY)
+                val initialMinute = if (reminderTime.isNotBlank()) reminderTime.split(":")[1].toIntOrNull() ?: calendar.get(java.util.Calendar.MINUTE) else calendar.get(java.util.Calendar.MINUTE)
+
+                val showDialog = {
+                    android.app.TimePickerDialog(
+                        context,
+                        { _, hourOfDay, minute ->
+                            reminderTime = String.format(java.util.Locale.getDefault(), "%02d:%02d", hourOfDay, minute)
+                        },
+                        initialHour,
+                        initialMinute,
+                        true // 24-hour format
+                    ).show()
+                }
+
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                     if (androidx.core.content.ContextCompat.checkSelfPermission(
                             context,
                             android.Manifest.permission.POST_NOTIFICATIONS
                         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
                     ) {
-                        showTimePicker = true
+                        showDialog()
                     } else {
                         permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                     }
                 } else {
-                    showTimePicker = true
+                    showDialog()
                 }
             }
             
@@ -224,25 +243,6 @@ fun AddEditHabitScreen(
                 ),
                 singleLine = true
             )
-
-            if (showTimePicker) {
-                val calendar = java.util.Calendar.getInstance()
-                val initialHour = if (reminderTime.isNotBlank()) reminderTime.split(":")[0].toIntOrNull() ?: calendar.get(java.util.Calendar.HOUR_OF_DAY) else calendar.get(java.util.Calendar.HOUR_OF_DAY)
-                val initialMinute = if (reminderTime.isNotBlank()) reminderTime.split(":")[1].toIntOrNull() ?: calendar.get(java.util.Calendar.MINUTE) else calendar.get(java.util.Calendar.MINUTE)
-                
-                android.app.TimePickerDialog(
-                    context,
-                    { _, hourOfDay, minute ->
-                        reminderTime = String.format(java.util.Locale.getDefault(), "%02d:%02d", hourOfDay, minute)
-                        showTimePicker = false
-                    },
-                    initialHour,
-                    initialMinute,
-                    true // 24-hour format
-                ).apply {
-                    setOnCancelListener { showTimePicker = false }
-                }.show()
-            }
 
             // Duration Input
             OutlinedTextField(

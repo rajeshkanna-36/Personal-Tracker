@@ -58,6 +58,9 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses ORDER BY date ASC") // ASC to draw chronological graph
     fun getAllExpenses(): Flow<List<ExpenseEntity>>
 
+    @Query("SELECT * FROM expenses WHERE id = :expenseId")
+    fun getExpenseById(expenseId: Long): Flow<ExpenseEntity?>
+
     @Query("SELECT COALESCE(SUM(amount), 0.0) FROM expenses WHERE type = 'Expense'")
     fun getTotalGlobalExpenses(): Flow<Double>
 

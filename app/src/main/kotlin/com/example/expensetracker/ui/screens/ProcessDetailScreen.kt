@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation3.runtime.NavKey
 import com.example.expensetracker.AddEditExpense
+import com.example.expensetracker.AddEditProcess
 import com.example.expensetracker.R
 import com.example.expensetracker.data.local.ExpenseEntity
 import com.example.expensetracker.ui.viewmodel.ExpenseViewModel
@@ -62,6 +63,7 @@ fun ProcessDetailScreen(
     // Delete confirmation
     var expenseToDelete by remember { mutableStateOf<ExpenseEntity?>(null) }
     var showDeleteProject by remember { mutableStateOf(false) }
+    var showOptionsMenu by remember { mutableStateOf(false) }
 
     val formatter = remember {
         NumberFormat.getCurrencyInstance(Locale("en", "IN")).apply {
@@ -145,6 +147,33 @@ fun ProcessDetailScreen(
                     val totalFunds = p.budget + totalIncome
                     val remaining = totalFunds - totalExpenses
 
+                    val isAgriculture = p.colorHex.equals("#FF4CAF50", ignoreCase = true)
+                    val isInvestment = p.colorHex.equals("#FF2196F3", ignoreCase = true)
+
+                    val balanceLabel = when {
+                        isAgriculture -> "Remaining Budget"
+                        isInvestment -> "Remaining Target Capital"
+                        else -> "Remaining Balance"
+                    }
+
+                    val budgetLabel = when {
+                        isAgriculture -> "Expected Budget"
+                        isInvestment -> "Target Capital"
+                        else -> "Budget"
+                    }
+
+                    val incomeLabel = when {
+                        isAgriculture -> "Yield"
+                        isInvestment -> "Returns"
+                        else -> "Income"
+                    }
+
+                    val spentLabel = when {
+                        isAgriculture -> "Expenses"
+                        isInvestment -> "Invested"
+                        else -> "Spent"
+                    }
+
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -161,7 +190,7 @@ fun ProcessDetailScreen(
                                 .animateContentSize()
                         ) {
                             Text(
-                                "Remaining Balance",
+                                balanceLabel,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                             )
@@ -179,7 +208,7 @@ fun ProcessDetailScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 StatPill(
-                                    label = "Budget",
+                                    label = budgetLabel,
                                     value = formatter.format(p.budget),
                                     color = MaterialTheme.colorScheme.onSurface,
                                     bgAlpha = 0.06f,
@@ -187,7 +216,7 @@ fun ProcessDetailScreen(
                                 )
                                 if (totalIncome > 0) {
                                     StatPill(
-                                        label = "Income",
+                                        label = incomeLabel,
                                         value = "+${formatter.format(totalIncome)}",
                                         color = MaterialTheme.colorScheme.primary,
                                         bgAlpha = 0.1f,
@@ -195,7 +224,7 @@ fun ProcessDetailScreen(
                                     )
                                 }
                                 StatPill(
-                                    label = "Spent",
+                                    label = spentLabel,
                                     value = formatter.format(totalExpenses),
                                     color = MaterialTheme.colorScheme.error,
                                     bgAlpha = 0.1f,
@@ -292,13 +321,34 @@ fun ProcessDetailScreen(
                 }
             }
 
-            Surface(
-                shape = CircleShape,
-                color = Color.Black.copy(alpha = 0.3f),
-                modifier = Modifier.size(48.dp)
-            ) {
-                IconButton(onClick = { showDeleteProject = true }) {
-                    Icon(Icons.Rounded.MoreVert, contentDescription = "More Options", tint = Color.White)
+            Box {
+                Surface(
+                    shape = CircleShape,
+                    color = Color.Black.copy(alpha = 0.3f),
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    IconButton(onClick = { showOptionsMenu = true }) {
+                        Icon(Icons.Rounded.MoreVert, contentDescription = "More Options", tint = Color.White)
+                    }
+                }
+                DropdownMenu(
+                    expanded = showOptionsMenu,
+                    onDismissRequest = { showOptionsMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Edit Project") },
+                        onClick = {
+                            showOptionsMenu = false
+                            onNavigate(AddEditProcess(processId = processId))
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete Project", color = MaterialTheme.colorScheme.error) },
+                        onClick = {
+                            showOptionsMenu = false
+                            showDeleteProject = true
+                        }
+                    )
                 }
             }
         }

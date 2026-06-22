@@ -17,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,7 +52,7 @@ fun DashboardScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text("Projects", fontWeight = FontWeight.ExtraBold, fontSize = 32.sp)
+                    Text("Portfolios", fontWeight = FontWeight.ExtraBold, fontSize = 32.sp)
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
@@ -65,7 +66,7 @@ fun DashboardScreen(
                         )
                     }
                     IconButton(onClick = { onNavigate(AddEditProcess(null)) }) {
-                        Icon(Icons.Rounded.Add, contentDescription = "Add Project")
+                        Icon(Icons.Rounded.Add, contentDescription = "Add Portfolio")
                     }
                     IconButton(onClick = { onNavigate(com.example.expensetracker.BackupRestore) }) {
                         Icon(Icons.Rounded.Settings, contentDescription = "Settings")
@@ -107,7 +108,7 @@ fun DashboardScreen(
             // Projects Section
             item {
                 Text(
-                    "Active Projects",
+                    "Portfolios & Projects",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(top = 8.dp)
@@ -184,6 +185,39 @@ fun ProcessCard(process: ProcessEntity, expenses: List<ExpenseEntity>, onClick: 
     
     val budgetProgress = if (process.budget > 0) (spent / process.budget).toFloat().coerceIn(0f, 1f) else 0f
 
+    val isAgriculture = process.colorHex.equals("#FF4CAF50", ignoreCase = true)
+    val isInvestment = process.colorHex.equals("#FF2196F3", ignoreCase = true)
+
+    val emoji = when {
+        isAgriculture -> "🚜"
+        isInvestment -> "📈"
+        else -> process.name.take(1).uppercase()
+    }
+
+    val typeColor = when {
+        isAgriculture -> Color(0xFF4CAF50)
+        isInvestment -> Color(0xFF2196F3)
+        else -> MaterialTheme.colorScheme.primary
+    }
+
+    val profitLabel = when {
+        isAgriculture -> "Yield"
+        isInvestment -> "Returns"
+        else -> "Profit"
+    }
+
+    val spentLabel = when {
+        isAgriculture -> "Expenses"
+        isInvestment -> "Invested"
+        else -> "Spent"
+    }
+
+    val budgetLabel = when {
+        isAgriculture -> "Expected Budget"
+        isInvestment -> "Target Capital"
+        else -> "Budget"
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -207,14 +241,14 @@ fun ProcessCard(process: ProcessEntity, expenses: List<ExpenseEntity>, onClick: 
                 Surface(
                     modifier = Modifier.size(48.dp),
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                    color = typeColor.copy(alpha = 0.15f)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = process.name.take(1).uppercase(),
+                            text = emoji,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = typeColor
                         )
                     }
                 }
@@ -229,7 +263,7 @@ fun ProcessCard(process: ProcessEntity, expenses: List<ExpenseEntity>, onClick: 
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        if (process.description.isNotBlank()) process.description else "Active Project",
+                        if (process.description.isNotBlank()) process.description else "Active Portfolio",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                         maxLines = 1,
@@ -238,21 +272,29 @@ fun ProcessCard(process: ProcessEntity, expenses: List<ExpenseEntity>, onClick: 
                 }
 
                 // Profit tag
-                val profitColor = if (profit >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-                val profitBg = if (profit >= 0) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
+                val profitColor = if (profit >= 0) typeColor else MaterialTheme.colorScheme.error
+                val profitBg = if (profit >= 0) typeColor.copy(alpha = 0.15f) else MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
                 val profitSign = if (profit > 0) "+" else ""
                 
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = profitBg
-                ) {
+                Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        "$profitSign₹${String.format("%.0f", profit)}",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        color = profitColor,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
+                        profitLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = profitBg
+                    ) {
+                        Text(
+                            "$profitSign₹${String.format("%.0f", profit)}",
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            color = profitColor,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
                 }
             }
 
@@ -264,12 +306,12 @@ fun ProcessCard(process: ProcessEntity, expenses: List<ExpenseEntity>, onClick: 
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    "Spent: ₹${String.format("%.0f", spent)}",
+                    "$spentLabel: ₹${String.format("%.0f", spent)}",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    "Budget: ₹${String.format("%.0f", process.budget)}",
+                    "$budgetLabel: ₹${String.format("%.0f", process.budget)}",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.SemiBold
@@ -284,7 +326,7 @@ fun ProcessCard(process: ProcessEntity, expenses: List<ExpenseEntity>, onClick: 
                     .fillMaxWidth()
                     .height(8.dp)
                     .clip(RoundedCornerShape(4.dp)),
-                color = if (budgetProgress >= 1f) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                color = if (budgetProgress >= 1f) MaterialTheme.colorScheme.error else typeColor,
                 trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
             )
         }

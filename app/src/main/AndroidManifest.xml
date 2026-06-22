@@ -4,6 +4,9 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.READ_SMS" />
     
     <application
         android:name=".ExpenseTrackerApplication"
@@ -16,6 +19,18 @@
         android:theme="@style/Theme.ExpenseTracker">
         
         <receiver android:name=".ui.notifications.HabitNotificationReceiver" android:exported="false" />
+        
+        <receiver android:name=".ui.notifications.BootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver android:name=".data.receivers.SmsReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
         
         <receiver android:name=".ui.widget.WalletWidgetReceiver" android:exported="true">
             <intent-filter>

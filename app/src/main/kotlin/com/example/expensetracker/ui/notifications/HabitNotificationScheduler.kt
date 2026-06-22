@@ -99,8 +99,8 @@ class HabitNotificationScheduler(private val context: Context) {
                         pendingIntent
                     )
                 } else {
-                    // Fallback if exact alarms are heavily restricted (e.g., Xiaomi)
-                    alarmManager.setAndAllowWhileIdle(
+                    // Fallback if exact alarms are heavily restricted
+                    alarmManager.set(
                         AlarmManager.RTC_WAKEUP,
                         nextTime.timeInMillis,
                         pendingIntent
