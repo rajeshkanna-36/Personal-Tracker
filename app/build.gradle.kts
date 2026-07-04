@@ -49,6 +49,7 @@ android {
 
 
 dependencies {
+  implementation("androidx.startup:startup-runtime:1.1.1")
   val composeBom = platform(libs.androidx.compose.bom)
   implementation(composeBom)
   androidTestImplementation(composeBom)
@@ -97,4 +98,11 @@ dependencies {
 
   // Widget
   implementation(libs.androidx.glance.appwidget)
+
+  // Haze Glassmorphism
+  implementation(libs.haze)
+
+  // Biometric
+  implementation(libs.androidx.biometric)
 }
+

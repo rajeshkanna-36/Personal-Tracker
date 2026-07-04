@@ -31,9 +31,10 @@ class WalletWidget : GlanceAppWidget() {
         val database = AppDatabase.getDatabase(context)
         val expenseDao = database.expenseDao()
         
-        val totalIncome = expenseDao.getTotalGeneralIncome().first()
+        val sharedPrefs = context.getSharedPreferences("expense_tracker_prefs", Context.MODE_PRIVATE)
+        val initialWalletBalance = sharedPrefs.getFloat("initial_wallet_balance", 0f).toDouble()
         val totalExpense = expenseDao.getTotalGeneralExpenses().first()
-        val walletBalance = totalIncome - totalExpense
+        val walletBalance = initialWalletBalance - totalExpense
 
         val formatter = NumberFormat.getCurrencyInstance(Locale("en", "IN")).apply {
             maximumFractionDigits = 0

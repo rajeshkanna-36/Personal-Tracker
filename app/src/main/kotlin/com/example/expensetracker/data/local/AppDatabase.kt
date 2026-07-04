@@ -10,15 +10,19 @@ import androidx.room.RoomDatabase
         ProcessEntity::class, 
         ExpenseEntity::class,
         HabitEntity::class,
-        HabitCompletionEntity::class
+        HabitCompletionEntity::class,
+        MemoryEntity::class,
+        DebtEntity::class
     ], 
-    version = 4, 
+    version = 8, 
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun expenseDao(): ExpenseDao
     abstract fun habitDao(): HabitDao
+    abstract fun memoryDao(): MemoryDao
+    abstract fun debtDao(): DebtDao
 
     companion object {
         @Volatile

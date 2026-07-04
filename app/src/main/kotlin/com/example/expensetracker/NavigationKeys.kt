@@ -9,3 +9,4 @@ import kotlinx.serialization.Serializable
 @Serializable data class AddEditExpense(val expenseId: Long? = null, val processId: Long? = null) : NavKey
 @Serializable data class AddEditHabit(val habitId: Long? = null) : NavKey
 @Serializable data object BackupRestore : NavKey
+@Serializable data object Profile : NavKey

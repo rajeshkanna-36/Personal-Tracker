@@ -23,7 +23,7 @@ fun AddEditProcessScreen(
     onBack: () -> Unit
 ) {
     val process by if (processId != null) {
-        viewModel.getProcessById(processId).collectAsState(initial = null)
+        remember(processId) { viewModel.getProcessById(processId) }.collectAsState(initial = null)
     } else {
         remember { mutableStateOf(null) }
     }

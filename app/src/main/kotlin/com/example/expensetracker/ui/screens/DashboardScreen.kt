@@ -1,5 +1,8 @@
 package com.example.expensetracker.ui.screens
 
+import androidx.compose.material3.*
+
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,9 +14,12 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.automirrored.rounded.TrendingDown
 import androidx.compose.material.icons.automirrored.rounded.TrendingUp
-import androidx.compose.material3.*
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,9 +36,11 @@ import com.example.expensetracker.data.local.ProcessEntity
 import com.example.expensetracker.data.local.ExpenseEntity
 import com.example.expensetracker.ui.viewmodel.ExpenseViewModel
 import com.example.expensetracker.ui.components.ExpenseGraph
+import com.example.expensetracker.ui.components.categoryEmojis
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.text.NumberFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,9 +52,9 @@ fun DashboardScreen(
 ) {
     val processes by viewModel.allProcesses.collectAsState()
     val allExpenses by viewModel.allExpenses.collectAsState()
-    val recentExpenses by viewModel.recentExpenses.collectAsState()
-    val totalGlobalExpenses by viewModel.totalGlobalExpenses.collectAsState()
-    val totalGlobalIncome by viewModel.totalGlobalIncome.collectAsState()
+    
+    val projectExpenses = remember(allExpenses) { allExpenses.filter { it.processId != null } }
+    val projectRecentExpenses = remember(projectExpenses) { projectExpenses.sortedByDescending { it.date }.take(5) }
 
     Scaffold(
         topBar = {
@@ -59,6 +67,14 @@ fun DashboardScreen(
                     titleContentColor = MaterialTheme.colorScheme.onBackground
                 ),
                 actions = {
+                    IconButton(onClick = { onNavigate(com.example.expensetracker.Profile) }) {
+                        Icon(
+                            Icons.Filled.Person,
+                            contentDescription = "Profile",
+                            modifier = Modifier.size(28.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                     IconButton(onClick = onThemeToggle) {
                         Icon(
                             if (isDarkTheme) Icons.Rounded.LightMode else Icons.Rounded.DarkMode,
@@ -77,33 +93,13 @@ fun DashboardScreen(
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(paddingValues)
                 .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp)
         ) {
-            // Graph Section
-            item {
-                Text(
-                    "Weekly Activity",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
-            item {
-                Card(
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
-                ) {
-                    Box(modifier = Modifier.padding(16.dp)) {
-                        ExpenseGraph(expenses = allExpenses)
-                    }
-                }
-            }
+
 
             // Projects Section
             item {
@@ -159,7 +155,7 @@ fun DashboardScreen(
                 )
             }
 
-            if (recentExpenses.isEmpty()) {
+            if (projectRecentExpenses.isEmpty()) {
                 item {
                     Text(
                         "No recent transactions.",
@@ -169,7 +165,7 @@ fun DashboardScreen(
                     )
                 }
             } else {
-                items(recentExpenses) { expense ->
+                items(projectRecentExpenses) { expense ->
                     RecentExpenseItem(expense)
                 }
             }
@@ -288,7 +284,7 @@ fun ProcessCard(process: ProcessEntity, expenses: List<ExpenseEntity>, onClick: 
                         color = profitBg
                     ) {
                         Text(
-                            "$profitSign₹${String.format("%.0f", profit)}",
+                            "$profitSign₹${String.format(Locale.US, "%.0f", profit)}",
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                             color = profitColor,
                             fontWeight = FontWeight.Bold,
@@ -306,12 +302,12 @@ fun ProcessCard(process: ProcessEntity, expenses: List<ExpenseEntity>, onClick: 
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    "$spentLabel: ₹${String.format("%.0f", spent)}",
+                    "$spentLabel: ₹${String.format(Locale.US, "%.0f", spent)}",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    "$budgetLabel: ₹${String.format("%.0f", process.budget)}",
+                    "$budgetLabel: ₹${String.format(Locale.US, "%.0f", process.budget)}",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.SemiBold
@@ -336,16 +332,9 @@ fun ProcessCard(process: ProcessEntity, expenses: List<ExpenseEntity>, onClick: 
 @Composable
 fun RecentExpenseItem(expense: ExpenseEntity) {
     val isIncome = expense.type == "Income"
-    val color = if (isIncome) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+    val color = if (isIncome) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
     val sign = if (isIncome) "+" else "-"
-    val emoji = when (expense.category) {
-        "Materials" -> "🧱"
-        "Labor" -> "👷"
-        "Transport" -> "🚚"
-        "Software" -> "💻"
-        "General" -> if (isIncome) "💵" else "🛒"
-        else -> "📦"
-    }
+    val emoji = if (expense.category == "General" && isIncome) "💵" else (categoryEmojis[expense.category] ?: "📦")
 
     Row(
         modifier = Modifier
@@ -371,15 +360,17 @@ fun RecentExpenseItem(expense: ExpenseEntity) {
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1
             )
+            val dateFormat = remember { SimpleDateFormat("MMM dd", Locale.getDefault()) }
+            val formattedDate = remember(expense.date) { dateFormat.format(Date(expense.date)) }
             Text(
-                "${expense.category} · ${SimpleDateFormat("MMM dd", Locale.getDefault()).format(Date(expense.date))}",
+                "${expense.category} · $formattedDate",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
             )
         }
 
         Text(
-            "$sign₹${String.format("%.0f", expense.amount)}",
+            "$sign₹${String.format(Locale.US, "%.0f", expense.amount)}",
             fontWeight = FontWeight.Bold,
             fontSize = 15.sp,
             color = color

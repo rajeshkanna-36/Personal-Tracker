@@ -13,9 +13,11 @@ import com.example.expensetracker.data.local.HabitCompletionEntity
 import com.example.expensetracker.data.local.HabitEntity
 import com.example.expensetracker.ui.notifications.HabitNotificationScheduler
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -33,6 +35,12 @@ class HabitViewModel(
             initialValue = emptyList()
         )
 
+    val selectedDateMillis = MutableStateFlow(System.currentTimeMillis())
+
+    fun setSelectedDate(dateMillis: Long) {
+        selectedDateMillis.value = dateMillis
+    }
+
     fun getHabitById(habitId: Long): StateFlow<HabitEntity?> {
         return repository.getHabitById(habitId).stateIn(
             scope = viewModelScope,
@@ -41,17 +49,35 @@ class HabitViewModel(
         )
     }
 
-    fun getCompletionsForDate(dateMillis: Long): StateFlow<List<HabitCompletionEntity>> {
-        return repository.getCompletionsForDate(getStartOfDay(dateMillis)).stateIn(
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val completionsForSelectedDate: StateFlow<List<HabitCompletionEntity>> = selectedDateMillis
+        .flatMapLatest { dateMillis ->
+            repository.getCompletionsForDate(getStartOfDay(dateMillis))
+        }
+        .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
-    }
 
-    fun getCompletionsForHabit(habitId: Long): Flow<List<HabitCompletionEntity>> {
-        return repository.getCompletionsForHabit(habitId)
-    }
+    val habitsWithCompletions: StateFlow<List<HabitUiModel>> = kotlinx.coroutines.flow.combine(
+        repository.allHabits,
+        repository.getAllCompletions()
+    ) { habits, completions ->
+        val completionsByHabit = completions.groupBy { it.habitId }
+        habits.map { habit ->
+            val habitCompletions = completionsByHabit[habit.id] ?: emptyList()
+            HabitUiModel(
+                habit = habit,
+                completions = habitCompletions,
+                streak = calculateStreak(habitCompletions, habit.targetDays)
+            )
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
     fun saveHabit(habit: HabitEntity) {
         viewModelScope.launch {
@@ -106,6 +132,36 @@ class HabitViewModel(
         return cal.timeInMillis
     }
 
+    private fun calculateStreak(completions: List<HabitCompletionEntity>, targetDaysStr: String): Int {
+        if (completions.isEmpty()) return 0
+        
+        val targetDays = targetDaysStr.split(",").mapNotNull { it.toIntOrNull() }.toSet()
+        if (targetDays.isEmpty()) return 0
+
+        val completedDatesSet = completions.map {
+            val cal = Calendar.getInstance().apply { timeInMillis = it.dateMillis }
+            "${cal.get(Calendar.YEAR)}-${cal.get(Calendar.DAY_OF_YEAR)}"
+        }.toSet()
+
+        var streak = 0
+        val cal = Calendar.getInstance()
+        
+        for (i in 0..365) {
+            val dayOfWeekIndex = (cal.get(Calendar.DAY_OF_WEEK) - 2 + 7) % 7
+            if (targetDays.contains(dayOfWeekIndex)) {
+                val dateKey = "${cal.get(Calendar.YEAR)}-${cal.get(Calendar.DAY_OF_YEAR)}"
+                if (completedDatesSet.contains(dateKey)) {
+                    streak++
+                } else if (i > 0) {
+                    break
+                }
+            }
+            cal.add(Calendar.DAY_OF_YEAR, -1)
+        }
+        
+        return streak
+    }
+
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
@@ -119,3 +175,9 @@ class HabitViewModel(
         }
     }
 }
+
+data class HabitUiModel(
+    val habit: HabitEntity,
+    val completions: List<HabitCompletionEntity>,
+    val streak: Int
+)

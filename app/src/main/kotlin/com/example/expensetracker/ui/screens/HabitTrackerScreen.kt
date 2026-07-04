@@ -21,6 +21,7 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -42,7 +43,10 @@ import androidx.navigation3.runtime.NavKey
 import com.example.expensetracker.AddEditHabit
 import com.example.expensetracker.data.local.HabitCompletionEntity
 import com.example.expensetracker.data.local.HabitEntity
+import com.example.expensetracker.ui.components.getHabitIcon
+import com.example.expensetracker.ui.viewmodel.HabitUiModel
 import com.example.expensetracker.ui.viewmodel.HabitViewModel
+import com.example.expensetracker.ui.components.habitIconsMap
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -50,23 +54,23 @@ import java.util.*
 @Composable
 fun HabitTrackerScreen(
     viewModel: HabitViewModel,
+    isDarkTheme: Boolean = true,
+    onThemeToggle: () -> Unit = {},
     onNavigate: (NavKey) -> Unit
 ) {
-    val allHabits by viewModel.allHabits.collectAsState()
-    
-    // Manage current selected date
-    var selectedDateMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    val completions by viewModel.getCompletionsForDate(selectedDateMillis).collectAsState(initial = emptyList())
+    val allHabitsWithCompletions by viewModel.habitsWithCompletions.collectAsState()
+    val selectedDateMillis by viewModel.selectedDateMillis.collectAsState()
+    val completions by viewModel.completionsForSelectedDate.collectAsState()
     
     // We only show habits that are targeted for the selected day of week
     val cal = Calendar.getInstance().apply { timeInMillis = selectedDateMillis }
     val dayOfWeekIndex = (cal.get(Calendar.DAY_OF_WEEK) - 2 + 7) % 7 // Monday = 0, Sunday = 6
     
-    val activeHabits = allHabits.filter { habit ->
-        habit.targetDays.split(",").contains(dayOfWeekIndex.toString())
+    val activeHabits = allHabitsWithCompletions.filter { habitModel ->
+        habitModel.habit.targetDays.split(",").contains(dayOfWeekIndex.toString())
     }
     
-    val showReminderBanner = allHabits.isEmpty()
+    val showReminderBanner = allHabitsWithCompletions.isEmpty()
 
     Scaffold(
         floatingActionButton = {
@@ -74,7 +78,8 @@ fun HabitTrackerScreen(
                 onClick = { onNavigate(AddEditHabit()) },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
-                shape = CircleShape
+                shape = CircleShape,
+                modifier = Modifier.padding(bottom = 100.dp)
             ) {
                 Icon(Icons.Rounded.Add, contentDescription = "Add Habit")
             }
@@ -91,14 +96,18 @@ fun HabitTrackerScreen(
         ) {
             // Header: Greeting and Date
             item {
-                HeaderSection(selectedDateMillis = selectedDateMillis)
+                HeaderSection(
+                    selectedDateMillis = selectedDateMillis,
+                    isDarkTheme = isDarkTheme,
+                    onThemeToggle = onThemeToggle
+                )
             }
 
             // Weekly Calendar Strip
             item {
                 WeeklyCalendarRow(
                     selectedDateMillis = selectedDateMillis,
-                    onDateSelected = { selectedDateMillis = it }
+                    onDateSelected = { viewModel.setSelectedDate(it) }
                 )
             }
 
@@ -144,18 +153,15 @@ fun HabitTrackerScreen(
                     )
                 }
             } else {
-                items(activeHabits, key = { it.id }) { habit ->
+                items(activeHabits, key = { it.habit.id }) { habitModel ->
+                    val habit = habitModel.habit
                     val isCompleted = completions.any { it.habitId == habit.id }
                     
-                    // Retrieve all completions to compute streak
-                    val allCompletions by viewModel.getCompletionsForHabit(habit.id).collectAsState(initial = emptyList())
-                    val streak = calculateStreak(allCompletions, habit.targetDays)
-
                     HabitRow(
                         habit = habit,
                         isCompleted = isCompleted,
-                        streak = streak,
-                        allCompletions = allCompletions,
+                        streak = habitModel.streak,
+                        allCompletions = habitModel.completions,
                         onToggle = { viewModel.toggleCompletion(habit.id, selectedDateMillis) },
                         onEdit = { onNavigate(AddEditHabit(habit.id)) },
                         onDelete = { viewModel.deleteHabit(habit) }
@@ -167,8 +173,9 @@ fun HabitTrackerScreen(
 }
 
 @Composable
-fun HeaderSection(selectedDateMillis: Long) {
-    val dateStr = SimpleDateFormat("EEEE, dd MMMM, yyyy", Locale.getDefault()).format(Date(selectedDateMillis))
+fun HeaderSection(selectedDateMillis: Long, isDarkTheme: Boolean = true, onThemeToggle: () -> Unit = {}) {
+    val dateFormat = remember { SimpleDateFormat("EEEE, dd MMMM, yyyy", Locale.getDefault()) }
+    val dateStr = remember(selectedDateMillis) { dateFormat.format(Date(selectedDateMillis)) }
     
     val selectedCal = Calendar.getInstance().apply { timeInMillis = selectedDateMillis }
     val currentHour = selectedCal.get(Calendar.HOUR_OF_DAY)
@@ -400,6 +407,8 @@ fun HabitRow(
                 )
                 .clickable(onClickLabel = "Expand habit details") { expanded = !expanded }
         ) {
+            val habitColor = remember(habit.colorHex) { Color(android.graphics.Color.parseColor(habit.colorHex)) }
+            
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier.padding(16.dp),
@@ -410,12 +419,18 @@ fun HabitRow(
                         modifier = Modifier
                             .size(48.dp)
                             .background(
-                                color = Color(android.graphics.Color.parseColor(habit.colorHex)).copy(alpha = 0.2f),
+                                color = habitColor.copy(alpha = 0.2f),
                                 shape = RoundedCornerShape(12.dp)
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(habit.icon, fontSize = 24.sp)
+                        val imageVector = habitIconsMap[habit.icon] ?: Icons.Rounded.Star
+                        Icon(
+                            imageVector = imageVector,
+                            contentDescription = habit.name,
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(28.dp)
+                        )
                     }
                     
                     Spacer(modifier = Modifier.width(16.dp))
@@ -460,7 +475,7 @@ fun HabitRow(
                             Icon(
                                 Icons.Rounded.CheckCircle, 
                                 contentDescription = "Done", 
-                                tint = Color(android.graphics.Color.parseColor(habit.colorHex)),
+                                tint = habitColor,
                                 modifier = Modifier.size(32.dp)
                             )
                         } else {
@@ -502,7 +517,7 @@ fun HabitRow(
                                 onClick = onEdit,
                                 modifier = Modifier.semantics { contentDescription = "Edit ${habit.name} habit" }
                             ) {
-                                Text("Edit Habit", color = Color(android.graphics.Color.parseColor(habit.colorHex)), fontWeight = FontWeight.Bold)
+                                Text("Edit Habit", color = habitColor, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -520,39 +535,7 @@ fun isSameDay(time1: Long, time2: Long): Boolean {
            cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
 }
 
-// Simple streak calculator (consecutive days looking backwards)
-fun calculateStreak(completions: List<HabitCompletionEntity>, targetDaysStr: String): Int {
-    if (completions.isEmpty()) return 0
-    
-    val targetDays = targetDaysStr.split(",").mapNotNull { it.toIntOrNull() }.toSet()
-    if (targetDays.isEmpty()) return 0
 
-    val completedDatesSet = completions.map {
-        val cal = Calendar.getInstance().apply { timeInMillis = it.dateMillis }
-        "${cal.get(Calendar.YEAR)}-${cal.get(Calendar.DAY_OF_YEAR)}"
-    }.toSet()
-
-    var streak = 0
-    val cal = Calendar.getInstance()
-    
-    // Check backwards from today for up to 365 days
-    for (i in 0..365) {
-        val dayOfWeekIndex = (cal.get(Calendar.DAY_OF_WEEK) - 2 + 7) % 7
-        
-        // If this day is a target day for the habit
-        if (targetDays.contains(dayOfWeekIndex)) {
-            val dateKey = "${cal.get(Calendar.YEAR)}-${cal.get(Calendar.DAY_OF_YEAR)}"
-            if (completedDatesSet.contains(dateKey)) {
-                streak++
-            } else if (i > 0) { // If it's not today and we missed it, streak ends
-                break
-            }
-        }
-        cal.add(Calendar.DAY_OF_YEAR, -1)
-    }
-    
-    return streak
-}
 
 @Composable
 fun MiniStreakCalendar(habit: HabitEntity, completions: List<HabitCompletionEntity>) {
@@ -561,6 +544,7 @@ fun MiniStreakCalendar(habit: HabitEntity, completions: List<HabitCompletionEnti
         "${cal.get(Calendar.YEAR)}-${cal.get(Calendar.DAY_OF_YEAR)}"
     }.toSet()
     val targetDays = habit.targetDays.split(",").mapNotNull { it.toIntOrNull() }.toSet()
+    val habitColor = remember(habit.colorHex) { Color(android.graphics.Color.parseColor(habit.colorHex)) }
     
     // Generate the last 7 days (including today)
     val last7Days = (6 downTo 0).map { i ->
@@ -585,7 +569,7 @@ fun MiniStreakCalendar(habit: HabitEntity, completions: List<HabitCompletionEnti
                     modifier = Modifier
                         .size(10.dp)
                         .background(
-                            color = if (isCompleted) Color(android.graphics.Color.parseColor(habit.colorHex)) else Color(0xFFEEEEEE),
+                            color = if (isCompleted) habitColor else Color(0xFFEEEEEE),
                             shape = CircleShape
                         )
                 )
@@ -613,8 +597,10 @@ fun FullStreakCalendar(completions: List<HabitCompletionEntity>, targetDays: Str
     val targetDaysSet = targetDays.split(",").mapNotNull { it.toIntOrNull() }.toSet()
     
     Column(modifier = Modifier.fillMaxWidth()) {
+        val monthFormat = remember { SimpleDateFormat("MMMM yyyy", Locale.getDefault()) }
+        val currentMonthStr = remember { monthFormat.format(Calendar.getInstance().time) }
         Text(
-            text = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Calendar.getInstance().time),
+            text = currentMonthStr,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
@@ -629,6 +615,7 @@ fun FullStreakCalendar(completions: List<HabitCompletionEntity>, targetDays: Str
         }
         Spacer(modifier = Modifier.height(8.dp))
         
+        val habitColor = remember(colorHex) { Color(android.graphics.Color.parseColor(colorHex)) }
         // Grid
         var currentDay = 1
         for (week in 0..5) {
@@ -654,7 +641,7 @@ fun FullStreakCalendar(completions: List<HabitCompletionEntity>, targetDays: Str
                                 .aspectRatio(1f)
                                 .padding(2.dp)
                                 .background(
-                                    color = if (isCompleted) Color(android.graphics.Color.parseColor(colorHex)) 
+                                    color = if (isCompleted) habitColor
                                             else if (isToday) MaterialTheme.colorScheme.surfaceVariant
                                             else Color.Transparent,
                                     shape = CircleShape

@@ -11,10 +11,13 @@ import com.example.expensetracker.data.BackupManager
 import com.example.expensetracker.data.ExpenseRepository
 import com.example.expensetracker.data.local.ExpenseEntity
 import com.example.expensetracker.data.local.ProcessEntity
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 class ExpenseViewModel(
     private val repository: ExpenseRepository,
@@ -76,6 +79,28 @@ class ExpenseViewModel(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = 0.0
         )
+
+    val monthsWithExpenses: StateFlow<List<Triple<Int, Int, Long>>> = generalExpenses
+        .map { expenses ->
+            val uniqueMonths = expenses.map { expense ->
+                val cal = Calendar.getInstance().apply { timeInMillis = expense.date }
+                Triple(cal.get(Calendar.MONTH), cal.get(Calendar.YEAR), cal.timeInMillis)
+            }.distinctBy { Pair(it.first, it.second) }
+             .sortedByDescending { it.third }
+            
+            if (uniqueMonths.isEmpty()) {
+                val cal = Calendar.getInstance()
+                listOf(Triple(cal.get(Calendar.MONTH), cal.get(Calendar.YEAR), cal.timeInMillis))
+            } else {
+                uniqueMonths
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = listOf(Calendar.getInstance().let { Triple(it.get(Calendar.MONTH), it.get(Calendar.YEAR), it.timeInMillis) })
+        )
+
 
     fun getProcessById(processId: Long): StateFlow<ProcessEntity?> {
         return repository.getProcessById(processId).stateIn(

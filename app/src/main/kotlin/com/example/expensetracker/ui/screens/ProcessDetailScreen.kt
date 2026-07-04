@@ -30,6 +30,7 @@ import com.example.expensetracker.AddEditExpense
 import com.example.expensetracker.AddEditProcess
 import com.example.expensetracker.R
 import com.example.expensetracker.data.local.ExpenseEntity
+import com.example.expensetracker.ui.components.categoryEmojis
 import com.example.expensetracker.ui.viewmodel.ExpenseViewModel
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -55,10 +56,10 @@ fun ProcessDetailScreen(
     onNavigate: (NavKey) -> Unit,
     onBack: () -> Unit
 ) {
-    val process by viewModel.getProcessById(processId).collectAsState(initial = null)
-    val expenses by viewModel.getExpensesForProcess(processId).collectAsState(initial = emptyList())
-    val totalExpenses by viewModel.getTotalExpensesForProcess(processId).collectAsState(initial = 0.0)
-    val totalIncome by viewModel.getTotalIncomeForProcess(processId).collectAsState(initial = 0.0)
+    val process by remember(processId) { viewModel.getProcessById(processId) }.collectAsState(initial = null)
+    val expenses by remember(processId) { viewModel.getExpensesForProcess(processId) }.collectAsState(initial = emptyList())
+    val totalExpenses by remember(processId) { viewModel.getTotalExpensesForProcess(processId) }.collectAsState(initial = 0.0)
+    val totalIncome by remember(processId) { viewModel.getTotalIncomeForProcess(processId) }.collectAsState(initial = 0.0)
 
     // Delete confirmation
     var expenseToDelete by remember { mutableStateOf<ExpenseEntity?>(null) }
@@ -446,18 +447,11 @@ fun ExpenseItem(
     expense: ExpenseEntity,
     onClick: () -> Unit
 ) {
-    val dateFormat = SimpleDateFormat("MMM dd", Locale.getDefault())
+    val dateFormat = remember { SimpleDateFormat("MMM dd", Locale.getDefault()) }
     val isIncome = expense.type == "Income"
-    val accentColor = if (isIncome) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+    val accentColor = if (isIncome) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
     val sign = if (isIncome) "+" else "-"
-    val emoji = when (expense.category) {
-        "Materials" -> "🧱"
-        "Labor" -> "👷"
-        "Transport" -> "🚚"
-        "Software" -> "💻"
-        "General" -> if (isIncome) "💵" else "🛒"
-        else -> "📦"
-    }
+    val emoji = if (expense.category == "General" && isIncome) "💵" else (categoryEmojis[expense.category] ?: "📦")
 
     val formatter = remember {
         NumberFormat.getCurrencyInstance(Locale("en", "IN")).apply {
@@ -465,54 +459,63 @@ fun ExpenseItem(
         }
     }
 
-    Row(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp, horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Surface(
-            modifier = Modifier.size(44.dp),
-            shape = CircleShape,
-            color = accentColor.copy(alpha = 0.1f)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 14.dp, horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text(emoji, fontSize = 20.sp)
-            }
-        }
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                expense.description,
-                fontWeight = FontWeight.SemiBold,
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    "${expense.category} · ${dateFormat.format(Date(expense.date))}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                )
-                if (expense.quantity != null) {
-                    Text(
-                        "· ${expense.quantity} ${expense.unit ?: ""}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
-                    )
+            Surface(
+                modifier = Modifier.size(46.dp),
+                shape = CircleShape,
+                color = accentColor.copy(alpha = 0.1f)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(emoji, fontSize = 22.sp)
                 }
             }
-        }
 
-        Text(
-            "$sign${formatter.format(expense.amount)}",
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.sp,
-            color = accentColor
-        )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    expense.description,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        "${expense.category} · ${dateFormat.format(Date(expense.date))}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                    )
+                    if (expense.quantity != null) {
+                        Text(
+                            "· ${expense.quantity} ${expense.unit ?: ""}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+            }
+
+            Text(
+                "$sign${formatter.format(expense.amount)}",
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 16.sp,
+                color = accentColor
+            )
+        }
     }
 }

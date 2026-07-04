@@ -23,6 +23,9 @@ interface ExpenseDao {
     @JvmSuppressWildcards
     suspend fun deleteProcess(process: ProcessEntity): Int
 
+    @Query("DELETE FROM processes")
+    fun deleteAllProcesses()
+
     @Query("SELECT * FROM processes ORDER BY createdAt DESC")
     fun getAllProcesses(): Flow<List<ProcessEntity>>
 
@@ -70,6 +73,9 @@ interface ExpenseDao {
     // General Expenses (No Process)
     @Query("SELECT * FROM expenses WHERE processId IS NULL ORDER BY date DESC")
     fun getGeneralExpenses(): Flow<List<ExpenseEntity>>
+
+    @Query("DELETE FROM expenses WHERE processId IS NULL")
+    fun deleteAllGeneralExpenses()
 
     @Query("SELECT COALESCE(SUM(amount), 0.0) FROM expenses WHERE processId IS NULL AND type = 'Expense'")
     fun getTotalGeneralExpenses(): Flow<Double>

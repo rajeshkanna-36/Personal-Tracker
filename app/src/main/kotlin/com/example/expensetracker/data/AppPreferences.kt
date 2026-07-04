@@ -2,6 +2,9 @@ package com.example.expensetracker.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 
 class AppPreferences(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("expense_tracker_prefs", Context.MODE_PRIVATE)
@@ -28,4 +31,21 @@ class AppPreferences(context: Context) {
                 prefs.edit().putBoolean("is_dark_theme", value).apply()
             }
         }
+
+    var initialWalletBalance: Double
+        get() = prefs.getFloat("initial_wallet_balance", 0f).toDouble()
+        set(value) {
+            prefs.edit().putFloat("initial_wallet_balance", value.toFloat()).apply()
+        }
+
+    val initialWalletBalanceFlow: Flow<Double> = callbackFlow {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == "initial_wallet_balance") {
+                trySend(initialWalletBalance)
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        trySend(initialWalletBalance)
+        awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
 }

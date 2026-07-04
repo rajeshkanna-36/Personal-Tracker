@@ -9,6 +9,9 @@ import androidx.navigation3.ui.NavDisplay
 import com.example.expensetracker.ui.screens.*
 import com.example.expensetracker.ui.viewmodel.ExpenseViewModel
 import com.example.expensetracker.ui.viewmodel.HabitViewModel
+import com.example.expensetracker.ui.viewmodel.MemoryViewModel
+
+import com.example.expensetracker.ui.viewmodel.ProfileViewModel
 
 @Composable
 fun MainNavigation(
@@ -18,6 +21,8 @@ fun MainNavigation(
   val backStack = rememberNavBackStack(MainApp)
   val expenseViewModel: ExpenseViewModel = viewModel(factory = ExpenseViewModel.Factory)
   val habitViewModel: HabitViewModel = viewModel(factory = HabitViewModel.Factory)
+  val memoryViewModel: MemoryViewModel = viewModel(factory = MemoryViewModel.Factory)
+  val profileViewModel: ProfileViewModel = viewModel(factory = ProfileViewModel.Factory)
 
   NavDisplay(
     backStack = backStack,
@@ -28,9 +33,16 @@ fun MainNavigation(
           MainScreen(
             expenseViewModel = expenseViewModel,
             habitViewModel = habitViewModel,
+            memoryViewModel = memoryViewModel,
             isDarkTheme = isDarkTheme,
             onThemeToggle = onThemeToggle,
             onNavigate = { key -> backStack.add(key) }
+          )
+        }
+        entry<Profile> {
+          ProfileScreen(
+            viewModel = profileViewModel,
+            onBack = { backStack.removeLastOrNull() }
           )
         }
         entry<ProcessDetail> { key ->

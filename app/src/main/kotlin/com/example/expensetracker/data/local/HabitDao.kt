@@ -22,6 +22,9 @@ interface HabitDao {
     @JvmSuppressWildcards
     suspend fun deleteHabit(habit: HabitEntity): Int
 
+    @Query("DELETE FROM habits")
+    fun deleteAllHabits()
+
     @Query("SELECT * FROM habits WHERE isArchived = 0 ORDER BY createdAt DESC")
     fun getAllHabits(): Flow<List<HabitEntity>>
 

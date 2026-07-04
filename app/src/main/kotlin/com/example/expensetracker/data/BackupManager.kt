@@ -167,23 +167,14 @@ class BackupManager(
 
         scope.launch {
             try {
-                val treeUri = Uri.parse(uriString)
-                val documentFile = DocumentFile.fromTreeUri(context, treeUri)
-                if (documentFile != null && documentFile.canWrite()) {
-                    var backupFile = documentFile.findFile("ExpenseTracker_AutoBackup.csv")
-                    if (backupFile == null) {
-                        backupFile = documentFile.createFile("text/csv", "ExpenseTracker_AutoBackup.csv")
-                    }
-                    
-                    backupFile?.let { file ->
-                        val csvData = exportAllDataToString()
-                        context.contentResolver.openOutputStream(file.uri, "wt")?.use { outputStream ->
-                            outputStream.write(csvData.toByteArray())
-                        }
-                        Log.d("BackupManager", "Auto-backup successful")
-                    }
+                val folder = java.io.File(uriString)
+                if (folder.exists() && folder.isDirectory && folder.canWrite()) {
+                    val backupFile = java.io.File(folder, "ExpenseTracker_AutoBackup.csv")
+                    val csvData = exportAllDataToString()
+                    backupFile.writeText(csvData)
+                    Log.d("BackupManager", "Auto-backup successful to ${backupFile.absolutePath}")
                 } else {
-                    Log.e("BackupManager", "Cannot write to selected auto-backup folder")
+                    Log.e("BackupManager", "Cannot write to selected auto-backup folder: $uriString")
                 }
             } catch (e: Exception) {
                 Log.e("BackupManager", "Auto-backup failed: ${e.message}")

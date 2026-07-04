@@ -10,6 +10,8 @@ import com.example.expensetracker.data.local.AppDatabase
 interface AppContainer {
     val expenseRepository: ExpenseRepository
     val habitRepository: HabitRepository
+    val memoryRepository: com.example.expensetracker.data.MemoryRepository
+    val debtRepository: com.example.expensetracker.data.DebtRepository
     val appPreferences: AppPreferences
     val backupManager: BackupManager
 }
@@ -20,6 +22,12 @@ class DefaultAppContainer(private val application: Application) : AppContainer {
     }
     override val habitRepository: HabitRepository by lazy {
         HabitRepository(AppDatabase.getDatabase(application).habitDao())
+    }
+    override val memoryRepository: com.example.expensetracker.data.MemoryRepository by lazy {
+        com.example.expensetracker.data.MemoryRepository(AppDatabase.getDatabase(application).memoryDao())
+    }
+    override val debtRepository: com.example.expensetracker.data.DebtRepository by lazy {
+        com.example.expensetracker.data.DebtRepository(AppDatabase.getDatabase(application).debtDao())
     }
     override val appPreferences: AppPreferences by lazy {
         AppPreferences(application)
