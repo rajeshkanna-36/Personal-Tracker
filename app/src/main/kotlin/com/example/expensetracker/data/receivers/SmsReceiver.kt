@@ -42,11 +42,9 @@ class SmsReceiver : BroadcastReceiver() {
                 val isCredit = creditRegex.containsMatchIn(body)
 
                 if (amountMatch != null && (isDebit || isCredit)) {
-                    // Extract just the digits and decimal point from the matched string
-                    val amountStr = amountMatch.value.replace(Regex("[^\\d.]"), "")
-                    // Clean up multiple decimals if they accidentally got merged
-                    val cleanAmountStr = amountStr.trimEnd('.')
-                    val amount = cleanAmountStr.toDoubleOrNull()
+                    val amountStrRaw = amountMatch.groupValues.drop(1).firstOrNull { it.isNotBlank() }
+                    val cleanAmountStr = amountStrRaw?.replace(",", "")?.trimEnd('.')
+                    val amount = cleanAmountStr?.toDoubleOrNull()
                     if (amount != null) {
                         val type = if (isDebit) "Expense" else "Income"
                         // Extract merchant or recipient name
